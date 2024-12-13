@@ -124,7 +124,7 @@
 ---
 ## Demo video
 
-<video src="https://github.com/user-attachments/assets/441821ec-1ac8-4632-8f49-22caaf64b089">
+<video src="https://github.com/user-attachments/assets/fa9898e2-074a-463f-9551-8589ac4391d3">
   Your browser does not support the video tag.
 </video>
 
