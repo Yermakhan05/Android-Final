@@ -11,6 +11,7 @@
 ## Features
 1. **Search and Filter:**
    - Search doctors and hospitals by name, specialty, or city.
+   - User can see average price and min, max price. 
 2. **Session Management:**
    - Create, view, and delete sessions.
 3. **Favorites:**
@@ -18,9 +19,9 @@
    - View the list of favorite doctors and hospitals.
 
 ## Technologies Used
-- **Backend:** Django REST Framework (DRF)
 - **Frontend:** Kotlin (Android Studio)
-- **Database:** SQLite (or your preferred database)
+- **Backend:** Django REST Framework (DRF)
+- **Database:** SQLite, Room Database
 - **API Pagination:** PageNumberPagination
 
 ---
@@ -97,7 +98,7 @@
 
 1. **Backend Setup**:
    ```bash
-   git clone <your-repo-link>
+   git clone https://github.com/Yermakhan05/Android-Final.git
    cd backend
    pip install -r requirements.txt
    python manage.py migrate
