@@ -1,48 +1,45 @@
 package com.example.auyrma.view.fragment
 
-import android.graphics.Color
-import android.graphics.drawable.Drawable
 import android.os.Bundle
-import android.text.SpannableString
-import android.text.Spanned
-import android.text.style.ImageSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
-import android.widget.FrameLayout
-import android.widget.LinearLayout
 import android.widget.Toast
-import androidx.appcompat.widget.SearchView
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
+import com.example.auyrma.databinding.FragmentDrListBinding
+import com.example.auyrma.model.datasource.ApiSource
+import com.example.auyrma.view.adapter.DrAdapter
+import com.example.auyrma.viewmodel.DrListViewModel
+import com.example.auyrma.viewmodel.DrListViewModelFactory
+import android.graphics.Color
+import android.graphics.drawable.Drawable
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.ImageSpan
+import android.widget.LinearLayout
 import androidx.appcompat.widget.Toolbar
 import androidx.core.content.ContextCompat
-import androidx.fragment.app.Fragment
-import com.example.auyrma.view.activity.MainActivity
 import com.example.auyrma.R
-import com.example.auyrma.databinding.FragmentDrListBinding
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
-import com.example.auyrma.model.datasource.ApiSource
+import android.widget.FrameLayout
+import androidx.annotation.StringRes
+import androidx.appcompat.widget.SearchView
 import com.example.auyrma.model.entity.Dr
-import com.example.auyrma.model.entity.DrResponse
-import com.example.auyrma.view.adapter.DrAdapter
+import com.example.auyrma.view.activity.MainActivity
 
 class DrListFragment : Fragment() {
-
     private var _binding: FragmentDrListBinding? = null
-    private val binding: FragmentDrListBinding get() = _binding!!
-
+    private val binding get() = _binding!!
+    private lateinit var viewModel: DrListViewModel
     private var adapter: DrAdapter? = null
-
+    private var selectedCity: String? = null
     private val categoryList = listOf("All", "Dentist", "Cardiologist", "Therapist", "Psychiatrist")
     private var selectedCategory: String = "All"
 
-    private var selectedCity: String? = null
-    private var lastList: List<Dr>? = null
-
     companion object {
         private const val ARG_CITY = "arg_city"
+
         fun newInstance(city: String): DrListFragment {
             val fragment = DrListFragment()
             val args = Bundle()
@@ -51,19 +48,23 @@ class DrListFragment : Fragment() {
             return fragment
         }
     }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
             selectedCity = it.getString(ARG_CITY, "Almaty")
         }
+        val factory = DrListViewModelFactory(ApiSource)
+        viewModel = ViewModelProvider(this, factory)[DrListViewModel::class.java]
     }
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?): View? {
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+    ): View {
         _binding = FragmentDrListBinding.inflate(inflater, container, false)
         return binding.root
     }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
@@ -76,116 +77,103 @@ class DrListFragment : Fragment() {
                     .beginTransaction()
                     .replace(
                         R.id.fragment_container_view,
-                        SessionDetailFragment.newInstance(it.name)
+                        SessionDetailFragment.newInstance(dr = it, isFromHospitalDetailPage = false)
                     )
                     .addToBackStack(null)
                     .commit()
-
             },
-            onChangeFavouriteStateDoctor = { dr, isFavourite ->
-                changeFavouriteState(dr.id, isFavourite)
-            },
+            onChangeFavouriteStateDoctor = { dr, isFavourite -> handleFavoriteState(dr.id, isFavourite) },
             requireContext()
         )
-
         binding.recyclerViewDoctors.adapter = adapter
+        viewModel.fetchDoctorList(selectedCity ?: "Almaty", "")
 
+        setupObservers()
+        setupCategoryButtons()
+        search()
+        toOtherPages()
         parentFragmentManager.setFragmentResultListener("requestKey", this) { _, bundle ->
             selectedCity = bundle.getString("selectedCity", "Almaty")
-            if (selectedCategory != "All") {
-                fetchDrList(mapOf("search" to selectedCategory))
-            }
-            else {
-                fetchDrList(mapOf())
-            }
+            viewModel.fetchDoctorList(selectedCity ?: "Almaty", selectedCategory)
         }
+    }
 
-        val searchView = binding.searchView
-        searchView.queryHint = "Search here"
-
-        setupCategoryButtons()
-        fetchDrList(mapOf())
-        search()
-
+    private fun toOtherPages() {
         binding.toHospitalList.setOnClickListener {
             (requireActivity() as? MainActivity)?.navigateToHospitalFragment()
         }
-    }
-
-    private fun fetchDrList(params: Map<String, String>) {
-        val mergedParams = mapOf(
-            "city" to selectedCity
-        ) + params
-        ApiSource.client.fetchMedicsWithParams(mergedParams).enqueue(object : Callback<DrResponse> {
-            override fun onResponse(call: Call<DrResponse>, response: Response<DrResponse>) {
-                if (response.isSuccessful) {
-                    val drList = response.body()?.results
-                    if (!drList.isNullOrEmpty()) {
-                        drList.forEach {
-                            it.isFavorite = it.favorites.contains(2)
-                        }
-                        adapter?.submitList(drList)
-                        lastList = drList
-                        drList?.let {
-                            val averagePrice = calculateAveragePrice(it);
-                            binding.averagePrice.text = averagePrice.toString() + "₸"
-                            val container = binding.priceRangeContainer
-                            val averageLine = binding.averagePriceLine
-
-                            val maxPrice = it.maxOf { it.price }
-                            val minPrice = 0
-
-                            container.post {
-                                val containerWidth = container.width
-                                val position = ((averagePrice - minPrice).toFloat() / (maxPrice - minPrice) * containerWidth).toInt()
-
-                                val layoutParams = averageLine.layoutParams as FrameLayout.LayoutParams
-                                layoutParams.marginStart = position
-                                averageLine.layoutParams = layoutParams
-                            }
-                        }
-                    }
-                }
-            }
-
-            override fun onFailure(call: Call<DrResponse>, t: Throwable) {
-                println("Error: ${t.message}")
-            }
-        })
-    }
-    private fun changeFavouriteState(drId: Int, isFavourite: Boolean) {
-        fetchDrList(mapOf())
-        val message = if (isFavourite) {
-            "Doctor with ID $drId added to favorites"
-        } else {
-            "Doctor with ID $drId removed from favorites"
+        binding.toFavoriteList.setOnClickListener {
+            (requireActivity() as? MainActivity)?.navigateToFavoriteFragment()
         }
-        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
     }
-
-
     private fun search() {
         binding.searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
                 query?.let {
-                    filterList(it)
+                    viewModel.fetchDoctorList(selectedCity ?: "Almaty", query)
                 }
                 return true
             }
 
             override fun onQueryTextChange(newText: String?): Boolean {
                 newText?.let {
-                    filterList(it)
+                    viewModel.fetchDoctorList(selectedCity ?: "Almaty", newText)
                 }
                 return true
             }
         })
     }
-    private fun filterList(query: String) {
-        val params = mapOf(
-            "search" to query
-        )
-        fetchDrList(params)
+    private fun setupObservers() {
+        viewModel.drListUI.observe(viewLifecycleOwner) { state ->
+            when (state) {
+                is DrListUI.Loading -> showLoading(state.isLoading)
+                is DrListUI.Success -> showDoctors(state.doctorList)
+                is DrListUI.Empty -> showEmptyState()
+                is DrListUI.Error -> showError(state.errorMessage)
+                is DrListUI.DrInserted -> showInsertionMessage(state.doctor)
+                else -> {}
+            }
+        }
+    }
+    private fun showLoading(isLoading: Boolean) {
+        binding.progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
+    }
+
+    private fun showDoctors(doctors: List<Dr>) {
+        val averagePrice = if (doctors.isNotEmpty()) doctors.sumOf { it.price } / doctors.size else 0
+        binding.averagePrice.text = averagePrice.toString()
+        val container = binding.priceRangeContainer
+        val averageLine = binding.averagePriceLine
+
+        val maxPrice = doctors.maxOf { it.price }
+        val minPrice = 0
+        container.post {
+            val containerWidth = container.width
+            val position = ((averagePrice - minPrice).toFloat() / (maxPrice - minPrice) * containerWidth).toInt()
+
+            val layoutParams = averageLine.layoutParams as FrameLayout.LayoutParams
+            layoutParams.marginStart = position
+            averageLine.layoutParams = layoutParams
+        }
+        adapter?.submitList(doctors)
+    }
+
+    private fun showEmptyState() {
+        Toast.makeText(requireContext(), getString(R.string.no_doctors_found), Toast.LENGTH_SHORT).show()
+    }
+    private fun showError(@StringRes errorMessage: Int) {
+        Toast.makeText(context, getString(errorMessage), Toast.LENGTH_SHORT).show()
+    }
+    private fun showInsertionMessage(doctor: Dr) {
+        Toast.makeText(context, "Added ${doctor.name} to favourites", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun handleFavoriteState(drId: Int, isFavourite: Boolean) {
+        Toast.makeText(
+            context,
+            if (!isFavourite) "Doctor added to favorites" else "Doctor removed from favorites",
+            Toast.LENGTH_SHORT
+        ).show()
     }
     private fun setupCategoryButtons() {
         for (category in categoryList) {
@@ -236,7 +224,15 @@ class DrListFragment : Fragment() {
             binding.linearLayoutCategories.addView(button)
         }
     }
-
+    private fun getCategoryImage(category: String): Drawable? {
+        val imageName = category.toLowerCase()
+        val resId = resources.getIdentifier(imageName, "drawable", requireContext().packageName)
+        return if (resId != 0) {
+            ContextCompat.getDrawable(requireContext(), resId)
+        } else {
+            null
+        }
+    }
     private fun handleCategorySelection(selected: String, button: Button) {
         selectedCategory = selected
 
@@ -247,33 +243,11 @@ class DrListFragment : Fragment() {
 
         button.setBackgroundResource(R.drawable.selected_category_background)
         button.setTextColor(Color.BLACK)
-
         if (selected == "All") {
-            fetchDrList(
-                mapOf(
-                    "search" to ""
-                )
-            )
+            viewModel.fetchDoctorList(selectedCity ?: "Almaty", "")
             return
         }
-        fetchDrList(mapOf("search" to selected))
-    }
-
-    private fun getCategoryImage(category: String): Drawable? {
-        val imageName = category.toLowerCase()
-        val resId = resources.getIdentifier(imageName, "drawable", requireContext().packageName)
-        return if (resId != 0) {
-            ContextCompat.getDrawable(requireContext(), resId)
-        } else {
-            null
-        }
-    }
-    private fun calculateAveragePrice(drList: List<Dr>): Int {
-        return if (drList.isNotEmpty()) {
-            drList.sumOf { it.price } / drList.size
-        } else {
-            0
-        }
+        viewModel.fetchDoctorList(selectedCity ?: "Almaty", selectedCategory)
     }
     override fun onDestroyView() {
         super.onDestroyView()

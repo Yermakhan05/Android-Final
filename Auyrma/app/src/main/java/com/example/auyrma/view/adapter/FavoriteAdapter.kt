@@ -16,6 +16,7 @@ import retrofit2.Callback
 import retrofit2.Response
 
 class FavoriteAdapter(
+    private val onSessionClickListener: (Dr) -> Unit,
 ): ListAdapter<Dr, FavoriteAdapter.ViewHolder>(ItemCallback()) {
 
 
@@ -55,6 +56,9 @@ class FavoriteAdapter(
                         favoriteIc.setImageResource(R.drawable.baseline_favorite_24)
                         dr.isFavorite = true
                     }
+                }
+                btnOpen.setOnClickListener {
+                    onSessionClickListener(dr)
                 }
                 Glide
                     .with(root.context)

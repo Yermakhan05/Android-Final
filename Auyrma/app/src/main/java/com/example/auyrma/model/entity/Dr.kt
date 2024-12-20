@@ -1,6 +1,7 @@
 package com.example.auyrma.model.entity
 
 import com.google.gson.annotations.SerializedName
+import java.io.Serializable
 
 data class Dr(
     val id: Int,
@@ -11,5 +12,5 @@ data class Dr(
     val hospital: Int = 0,
     val favorites: List<Int> = listOf(),
     var isFavorite: Boolean = false
-)
+): Serializable
 

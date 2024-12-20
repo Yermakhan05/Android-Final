@@ -45,7 +45,21 @@ class HospitalDetailFragment : Fragment() {
     }
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        adapter = FavoriteAdapter()
+        adapter = FavoriteAdapter(
+            onSessionClickListener = {
+                val toolbar = requireActivity().findViewById<Toolbar>(R.id.toolbar)
+                toolbar.visibility = View.GONE
+
+                requireActivity().supportFragmentManager
+                    .beginTransaction()
+                    .replace(
+                        R.id.fragment_container_view,
+                        SessionDetailFragment.newInstance(it, true)
+                    )
+                    .addToBackStack(null)
+                    .commit()
+            },
+        )
         binding.recyclerViewDr.adapter = adapter
         val hospital = arguments?.getSerializable(KEY_HOSPITAL) as? Hospital
         viewHospital(hospital)
@@ -73,10 +87,11 @@ class HospitalDetailFragment : Fragment() {
             .into(binding.srcImage)
     }
 
+
     private fun fetchDrList(params: Map<String, String>) {
         var minPrice: Int = 5000
         var maxPrice: Int = 100000
-        ApiSource.client.fetchMedicsWithParams(params).enqueue(object : Callback<DrResponse> {
+        ApiSource.client.fetchMedicsWithParams2(params).enqueue(object : Callback<DrResponse> {
             override fun onResponse(call: Call<DrResponse>, response: Response<DrResponse>) {
                 if (response.isSuccessful) {
                     val drList = response.body()?.results

@@ -12,11 +12,25 @@ import com.example.auyrma.databinding.ActivityMainBinding
 import com.example.auyrma.view.fragment.DrListFragment
 import com.example.auyrma.view.fragment.FavoriteListFragment
 import com.example.auyrma.view.fragment.HospitalListFragment
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.app.ActivityCompat
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     var selectedCityOfUser: String = "Almaty"
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            println("POST_NOTIFICATIONS permission granted")
+        } else {
+            println("POST_NOTIFICATIONS permission denied")
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,11 +73,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 R.id.session_page -> {
-                    showSessionToolbar()
-                    supportFragmentManager
-                        .beginTransaction()
-                        .replace(R.id.fragment_container_view, FavoriteListFragment.newInstance())
-                        .commit()
+                    navigateToFavoriteFragment()
                 }
 
                 R.id.hospital -> {
@@ -83,13 +93,37 @@ class MainActivity : AppCompatActivity() {
             true
         }
     }
+    override fun onStart() {
+        super.onStart()
+        checkNotificationPermission()
+    }
+
+    private fun checkNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // Android 13+
+            when {
+                ActivityCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                    // Permission is already granted
+                    println("POST_NOTIFICATIONS permission already granted")
+                }
+                else -> {
+                    // Request the permission
+                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        }
+    }
     private fun showHomeToolbar() {
+        binding.toolbar.visibility = View.VISIBLE
         binding.toolbarMainLayout.visibility = View.VISIBLE
         binding.toolbarHospitalLayout.visibility = View.GONE
         binding.selectCity.visibility = View.VISIBLE
     }
 
     private fun showHospitalToolbar() {
+        binding.toolbar.visibility = View.VISIBLE
         binding.toolbar.setPadding(
             binding.toolbar.paddingLeft,
             binding.toolbar.paddingTop,
@@ -101,10 +135,24 @@ class MainActivity : AppCompatActivity() {
         binding.selectCity.visibility = View.VISIBLE
     }
     private fun showSessionToolbar() {
+        binding.toolbar.visibility = View.VISIBLE
         binding.toolbarMainLayout.visibility = View.VISIBLE
         binding.selectCity.visibility = View.GONE
         binding.toolbarHospitalLayout.visibility = View.GONE
     }
+
+    fun navigateToFavoriteFragment() {
+        val currentFragment = supportFragmentManager.findFragmentById(R.id.fragment_container_view)
+        if (currentFragment is FavoriteListFragment) return
+
+        showSessionToolbar()
+        supportFragmentManager
+            .beginTransaction()
+            .replace(R.id.fragment_container_view, FavoriteListFragment.newInstance())
+            .commit()
+        binding.bottomNavigationView.menu.findItem(R.id.session_page)?.isChecked = true
+    }
+
     fun navigateToHospitalFragment() {
         val currentFragment = supportFragmentManager.findFragmentById(R.id.fragment_container_view)
         if (currentFragment is HospitalListFragment) return
@@ -118,7 +166,6 @@ class MainActivity : AppCompatActivity() {
 
         binding.bottomNavigationView.menu.findItem(R.id.hospital)?.isChecked = true
     }
-
 
 
     private fun showCitySelectionDialog(cities: Array<String>) {

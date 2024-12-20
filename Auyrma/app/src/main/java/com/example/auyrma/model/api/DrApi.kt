@@ -8,16 +8,24 @@ import com.example.auyrma.model.entity.FavoriteResponse
 import com.example.auyrma.model.entity.Hospital
 import com.example.auyrma.model.entity.Pharmacy
 import com.example.auyrma.model.entity.Session
+import com.example.auyrma.model.entity.SessionRequest
 import retrofit2.Call
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Headers
 import retrofit2.http.POST
+import retrofit2.http.Path
 import retrofit2.http.QueryMap
 
 interface DrApi {
     @GET("medics/")
-    fun fetchMedicsWithParams(
+    suspend fun fetchMedicsWithParams(
+        @QueryMap params: Map<String, String?>
+    ): DrResponse
+
+    @GET("medics/")
+    fun fetchMedicsWithParams2(
         @QueryMap params: Map<String, String?>
     ): Call<DrResponse>
 
@@ -51,4 +59,10 @@ interface DrApi {
 
     @GET("medics_all/")
     fun fetchAllDr(): Call<List<Dr>>
+
+    @POST("sessions/")
+    fun addSession(@Body sessionRequest: SessionRequest): Call<FavoriteResponse>
+
+    @DELETE("sessions/{id}/")
+    fun deleteSession(@Path("id") sessionId: Int): Call<Void>
 }

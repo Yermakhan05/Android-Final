@@ -16,15 +16,12 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 
-
 class DrAdapter(
     private val onSessionClickListener: (Dr) -> Unit,
     private val onChangeFavouriteStateDoctor: (Dr, Boolean) -> Unit,
     private val context: Context,
     )
     : ListAdapter<Dr, DrAdapter.ViewHolder>(ItemCallback()) {
-
-
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         return ViewHolder(
             ItemCardDrBinding.inflate(LayoutInflater.from(parent.context), parent, false)
@@ -37,7 +34,6 @@ class DrAdapter(
     inner class ViewHolder(
         private val binding: ItemCardDrBinding
     ) : RecyclerView.ViewHolder(binding.root) {
-
         fun bind(dr: Dr) {
             with(binding) {
                 binding.doctorName.text = (dr.name).split(" ").joinToString("\n")
@@ -46,7 +42,6 @@ class DrAdapter(
                 )
                 binding.backgroundImage.setImageResource(resourceId)
                 binding.doctorSpeciality.text = dr.speciality
-
                 val favoriteRequest = FavoriteRequest(
                     clientId = 2,
                     medicId = dr.id
@@ -67,19 +62,11 @@ class DrAdapter(
                 if (dr.isFavorite) {
                     favoriteIcon.setImageResource(R.drawable.baseline_favorite_24)
                 }
-
                 Glide
                     .with(root.context)
                     .load(dr.medicImage)
                     .placeholder(R.drawable.placeholder_image)
                     .into(person);
-
-//                Glide.with(this) // Pass the context
-//                    .load("https://example.com/image.jpg") // URL of the image
-//                    .placeholder(R.drawable.placeholder) // Placeholder image while loading
-//                    .error(R.drawable.error_image) // Error image if loading fails
-//                    .into(binding.imageView)
-
                 createSession.setOnClickListener {
                     onSessionClickListener(dr)
                 }

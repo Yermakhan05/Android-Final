@@ -1,13 +1,17 @@
 package com.example.auyrma.view.fragment
 
+import android.app.AlertDialog
 import android.os.Bundle
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.widget.Toolbar
 import androidx.recyclerview.widget.RecyclerView
+import com.example.auyrma.MyApp.Companion.database
 import com.example.auyrma.view.adapter.HospitalAdapter
 import com.example.auyrma.R
 import com.example.auyrma.view.adapter.SessionAdapter
@@ -16,8 +20,12 @@ import com.example.auyrma.model.datasource.ApiSource
 import com.example.auyrma.model.entity.Dr
 import com.example.auyrma.model.entity.Hospital
 import com.example.auyrma.model.entity.Session
+import com.example.auyrma.model.entity.SessionRoom
 import com.example.auyrma.view.adapter.FavoriteAdapter
 import com.google.android.material.tabs.TabLayout
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -46,6 +54,8 @@ class FavoriteListFragment : Fragment() {
         setupTabs()
         fetchSessionList(mapOf("user" to "2"))
     }
+
+
     private fun setupTabs() {
         val tabLayout = binding.tabLayout
 
@@ -75,14 +85,12 @@ class FavoriteListFragment : Fragment() {
                     if (hospitalList != null) {
                         adapter = HospitalAdapter(
                             onSessionClickListener = {
-                                val sessionDetailFragment = SessionDetailFragment.newInstance(it.name)
-
                                 val toolbar = requireActivity().findViewById<Toolbar>(R.id.toolbar)
                                 toolbar.visibility = View.GONE
 
                                 requireActivity().supportFragmentManager
                                     .beginTransaction()
-                                    .replace(R.id.fragment_container_view, SessionDetailFragment.newInstance(it.name))
+                                    .replace(R.id.fragment_container_view, HospitalDetailFragment.newInstance(it))
                                     .addToBackStack(null)
                                     .commit()
                             },
@@ -114,7 +122,21 @@ class FavoriteListFragment : Fragment() {
                 if (response.isSuccessful) {
                     val drList = response.body()
                     if (drList != null) {
-                        adapter = FavoriteAdapter()
+                        adapter = FavoriteAdapter(
+                            onSessionClickListener = {
+                                val toolbar = requireActivity().findViewById<Toolbar>(R.id.toolbar)
+                                toolbar.visibility = View.GONE
+
+                                requireActivity().supportFragmentManager
+                                    .beginTransaction()
+                                    .replace(
+                                        R.id.fragment_container_view,
+                                        SessionDetailFragment.newInstance(it, false)
+                                    )
+                                    .addToBackStack(null)
+                                    .commit()
+                            },
+                        )
                         drList.forEach {
                             it.isFavorite = it.favorites.contains(2)
                         }
@@ -140,8 +162,8 @@ class FavoriteListFragment : Fragment() {
                 if (response.isSuccessful && response.body() != null) {
                     sessionList = response.body()
                     adapter = SessionAdapter(
-                        removeSessionState = {
-
+                        removeSessionState = { session ->
+                            showConfirmationDialog(session)
                         }
                     )
                     binding.recyclerViewSessions.adapter = adapter
@@ -150,28 +172,58 @@ class FavoriteListFragment : Fragment() {
                     println("Error: ${response.errorBody()?.string()}")
                 }
             }
-
             override fun onFailure(call: Call<List<Session>>, t: Throwable) {
                 println("Failed: ${t.message}")
             }
         })
     }
 
+    private fun showConfirmationDialog(session: Session) {
+        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_confirmation, null)
+
+        val confirmationDetails = dialogView.findViewById<TextView>(R.id.confirmationDetails)
+        val removeBtn = dialogView.findViewById<Button>(R.id.btnContinue)
+        removeBtn.text = "Remove"
+        confirmationDetails.text = "Are you sure you want to remove it?"
+
+        val dialog = AlertDialog.Builder(requireContext())
+            .setView(dialogView)
+            .setCancelable(true)
+            .create()
+
+        dialogView.findViewById<View>(R.id.btnContinue).setOnClickListener {
+            removeSession(session)
+            dialog.dismiss()
+        }
+
+        dialogView.findViewById<View>(R.id.btnCancel).setOnClickListener {
+            Toast.makeText(requireContext(), "Appointment Cancelled!", Toast.LENGTH_SHORT).show()
+            dialog.dismiss()
+        }
+        dialog.show()
+    }
+
+    private fun removeSession(session: Session){
+        ApiSource.client.deleteSession(session.id).enqueue(object : Callback<Void> {
+            override fun onResponse(call: Call<Void>, response: Response<Void>) {
+                if (response.isSuccessful) {
+                    fetchSessionList(mapOf("user" to "2"))
+
+                } else {
+                    println("Error")
+                }
+            }
+            override fun onFailure(call: Call<Void>, t: Throwable) {
+                println("Error: ${t.message}")
+            }
+        })
+    }
     private fun changeFavouriteState(hospitalId: Int, isFavourite: Boolean) {
         fetchHospitalFavouriteList()
         val message = if (isFavourite) {
             "Hospital with ID $hospitalId added to favorites"
         } else {
             "Hospital with ID $hospitalId removed from favorites"
-        }
-        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-    }
-    private fun changeFavouriteStateDoctor(drId: Int, isFavourite: Boolean) {
-        fetchDoctorFavouriteList()
-        val message = if (isFavourite) {
-            "Doctor with ID $drId added to favorites"
-        } else {
-            "Doctor with ID $drId removed from favorites"
         }
         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
     }

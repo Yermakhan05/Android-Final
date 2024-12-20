@@ -7,11 +7,12 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.auyrma.R
 import com.example.auyrma.databinding.DrSessionCardBinding
+import com.example.auyrma.model.entity.Dr
 import com.example.auyrma.model.entity.Session
 
 
 class SessionAdapter(
-    private val removeSessionState: () -> Unit,
+    private val removeSessionState: (session: Session) -> Unit,
 ) : ListAdapter<Session, SessionAdapter.ViewHolder>(SessionItemCallback()) {
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         return ViewHolder(
@@ -32,7 +33,7 @@ class SessionAdapter(
                 doctorSpeciality.text = item.medics.speciality
                 drPrice.text = item.medics.price.toString() + "₸"
                 removeSession.setOnClickListener {
-                    removeSessionState()
+                    removeSessionState(item)
                 }
                 sessionDate.text = item.appointment
 

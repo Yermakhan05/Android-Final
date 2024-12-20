@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -39,6 +40,9 @@ android {
 }
 
 dependencies {
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+    ksp(libs.room.compiler)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
@@ -51,9 +55,9 @@ dependencies {
     implementation(libs.retrofit)
     implementation(libs.glide)
     implementation(libs.okhttp)
-
+    implementation(libs.lifecycle.viewmodel)
     implementation(libs.gson.converter)
     implementation(libs.logging)
-
+    implementation(libs.work.runtime.ktx)
     implementation(libs.threetenabp)
 }

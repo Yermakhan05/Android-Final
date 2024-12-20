@@ -19,6 +19,12 @@ class SessionsSerializer(serializers.ModelSerializer):
         fields = ('id', 'appointment', 'medics', 'client')
 
 
+class SessionsSerializer2(serializers.ModelSerializer):
+    class Meta:
+        model = Sessions
+        fields = ('id', 'appointment', 'medics', 'client')
+
+
 class ClientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Client

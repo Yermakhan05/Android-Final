@@ -60,6 +60,14 @@
                 android:layout_marginTop="30dp"
                 android:textStyle="bold"/>
 
+            <ProgressBar
+                android:id="@+id/progressBar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:visibility="gone"
+                style="?android:attr/progressBarStyleLarge" />
+
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recycler_view_doctors"
                 android:layout_width="match_parent"
@@ -70,6 +78,7 @@
                 android:clipToPadding="false"
                 android:orientation="horizontal"/>
             <LinearLayout
+                android:id="@+id/to_favorite_list"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="20dp"
@@ -103,8 +112,8 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_margin="5dp"
-                    android:text=". 0"
+                    android:layout_marginStart="5dp"
+                    android:text=". and, your favorite list of doctor and hospital."
                     android:textColor="#0e5aed"
                     android:textSize="14sp" />
 

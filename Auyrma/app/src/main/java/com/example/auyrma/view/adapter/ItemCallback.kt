@@ -7,9 +7,7 @@ class ItemCallback() : DiffUtil.ItemCallback<Dr>() {
     override fun areItemsTheSame(oldItem: Dr, newItem: Dr): Boolean {
         return oldItem.id == newItem.id
     }
-
     override fun areContentsTheSame(oldItem: Dr, newItem: Dr): Boolean {
         return oldItem.id == newItem.id
     }
-
 }

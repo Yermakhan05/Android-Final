@@ -1,5 +1,6 @@
 from .models import Medics, Sessions, Client, Hospital, Pharmacy
-from .serializer import MedicsSerializer, SessionsSerializer, ClientSerializer, HospitalSerializer, PharmacySerializer
+from .serializer import MedicsSerializer, SessionsSerializer, ClientSerializer, HospitalSerializer, PharmacySerializer, \
+    SessionsSerializer2
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
@@ -103,7 +104,7 @@ def sessions_list(request):
             'client': client.id,
             'appointment': appointment
         }
-        serializer = SessionsSerializer(data=session_data)
+        serializer = SessionsSerializer2(data=session_data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
