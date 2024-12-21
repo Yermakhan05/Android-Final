@@ -42,6 +42,7 @@ android {
 dependencies {
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
+    implementation(libs.androidx.swiperefreshlayout)
     ksp(libs.room.compiler)
 
     implementation(libs.androidx.core.ktx)
@@ -60,4 +61,5 @@ dependencies {
     implementation(libs.logging)
     implementation(libs.work.runtime.ktx)
     implementation(libs.threetenabp)
+    implementation(libs.fragment.ktx)
 }

@@ -1,5 +1,6 @@
 package com.example.auyrma.model.api
 
+import com.example.auyrma.model.entity.ClientRequest
 import com.example.auyrma.model.entity.Dr
 import com.example.auyrma.model.entity.DrResponse
 import com.example.auyrma.model.entity.FavoriteRequest
@@ -30,10 +31,10 @@ interface DrApi {
     ): Call<DrResponse>
 
     @GET("hospitals/")
-    fun fetchHospitals(@QueryMap params: Map<String, String?>): Call<List<Hospital>>
+    suspend fun fetchHospitals(@QueryMap params: Map<String, String?>): List<Hospital>
 
     @GET("pharmacy/")
-    fun fetchPharmacies(@QueryMap params: Map<String, String?>): Call<List<Pharmacy>>
+    suspend fun fetchPharmacies(@QueryMap params: Map<String, String?>): List<Pharmacy>
 
     @Headers("Content-Type: application/json")
     @POST("add_favorite_medic/")
@@ -44,6 +45,9 @@ interface DrApi {
 
     @POST("add_favorite/")
     fun addFavoriteHospital(@Body favoriteRequest: FavoriteRequestToHospital): Call<FavoriteResponse>
+
+    @POST("clients/")
+    fun addUserToBack(@Body clientRequest: ClientRequest): Call<FavoriteResponse>
 
     @POST("remove_favorite_hospital/")
     fun removeFavoriteHospital(@Body favoriteRequest: FavoriteRequestToHospital): Call<FavoriteResponse>

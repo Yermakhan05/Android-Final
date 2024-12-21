@@ -26,7 +26,12 @@ import android.widget.FrameLayout
 import androidx.annotation.StringRes
 import androidx.appcompat.widget.SearchView
 import com.example.auyrma.model.entity.Dr
+import com.example.auyrma.model.repository.UserRepository
 import com.example.auyrma.view.activity.MainActivity
+import com.example.auyrma.view.fragment.profile.ProfileFragment
+import com.example.auyrma.viewmodel.AuthViewModel
+import com.example.auyrma.viewmodel.ViewModelFactory
+import com.google.android.material.bottomnavigation.BottomNavigationView
 
 class DrListFragment : Fragment() {
     private var _binding: FragmentDrListBinding? = null
@@ -36,6 +41,10 @@ class DrListFragment : Fragment() {
     private var selectedCity: String? = null
     private val categoryList = listOf("All", "Dentist", "Cardiologist", "Therapist", "Psychiatrist")
     private var selectedCategory: String = "All"
+    private lateinit var userRepository: UserRepository
+    private lateinit var authViewModel: AuthViewModel
+
+    private var userId: Int? = null
 
     companion object {
         private const val ARG_CITY = "arg_city"
@@ -67,26 +76,54 @@ class DrListFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        val repository = UserRepository(requireContext())
+        val factory = ViewModelFactory(repository)
+        authViewModel = ViewModelProvider(this, factory).get(AuthViewModel::class.java)
+
+        // Инициализация репозитория
+        userRepository = UserRepository(requireContext())
+
+        if (isUserAuthenticated()) {
+            userId = userRepository.getAuthenticatedUserId()
+        }
+        else {
+            userId = null
+        }
 
         adapter = DrAdapter(
             onSessionClickListener = {
-                val toolbar = requireActivity().findViewById<Toolbar>(R.id.toolbar)
-                toolbar.visibility = View.GONE
+                if (isUserAuthenticated()){
+                    val toolbar = requireActivity().findViewById<Toolbar>(R.id.toolbar)
+                    toolbar.visibility = View.GONE
 
-                requireActivity().supportFragmentManager
-                    .beginTransaction()
-                    .replace(
-                        R.id.fragment_container_view,
-                        SessionDetailFragment.newInstance(dr = it, isFromHospitalDetailPage = false)
-                    )
-                    .addToBackStack(null)
-                    .commit()
+                    requireActivity().supportFragmentManager
+                        .beginTransaction()
+                        .replace(
+                            R.id.fragment_container_view,
+                            SessionDetailFragment.newInstance(dr = it, isFromHospitalDetailPage = false)
+                        )
+                        .addToBackStack(null)
+                        .commit()
+                }
+                else {
+                    val navigationView = requireActivity().findViewById<BottomNavigationView>(R.id.bottom_navigation_view)
+                    navigationView.menu.findItem(R.id.profile)?.isChecked = true
+                    requireActivity().supportFragmentManager
+                        .beginTransaction()
+                        .replace(
+                            R.id.fragment_container_view,
+                            ProfileFragment()
+                        )
+                        .addToBackStack(null)
+                        .commit()
+                }
             },
             onChangeFavouriteStateDoctor = { dr, isFavourite -> handleFavoriteState(dr.id, isFavourite) },
-            requireContext()
+            requireContext(),
+            userId
         )
         binding.recyclerViewDoctors.adapter = adapter
-        viewModel.fetchDoctorList(selectedCity ?: "Almaty", "")
+        viewModel.fetchDoctorList(selectedCity ?: "Almaty", "", userId)
 
         setupObservers()
         setupCategoryButtons()
@@ -94,7 +131,7 @@ class DrListFragment : Fragment() {
         toOtherPages()
         parentFragmentManager.setFragmentResultListener("requestKey", this) { _, bundle ->
             selectedCity = bundle.getString("selectedCity", "Almaty")
-            viewModel.fetchDoctorList(selectedCity ?: "Almaty", selectedCategory)
+            viewModel.fetchDoctorList(selectedCity ?: "Almaty", selectedCategory, userId)
         }
     }
 
@@ -106,18 +143,23 @@ class DrListFragment : Fragment() {
             (requireActivity() as? MainActivity)?.navigateToFavoriteFragment()
         }
     }
+
+
+    private fun isUserAuthenticated(): Boolean {
+        return userRepository.isUserAuthenticated()
+    }
     private fun search() {
         binding.searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
                 query?.let {
-                    viewModel.fetchDoctorList(selectedCity ?: "Almaty", query)
+                    viewModel.fetchDoctorList(selectedCity ?: "Almaty", query, userId)
                 }
                 return true
             }
 
             override fun onQueryTextChange(newText: String?): Boolean {
                 newText?.let {
-                    viewModel.fetchDoctorList(selectedCity ?: "Almaty", newText)
+                    viewModel.fetchDoctorList(selectedCity ?: "Almaty", newText, userId)
                 }
                 return true
             }
@@ -244,10 +286,10 @@ class DrListFragment : Fragment() {
         button.setBackgroundResource(R.drawable.selected_category_background)
         button.setTextColor(Color.BLACK)
         if (selected == "All") {
-            viewModel.fetchDoctorList(selectedCity ?: "Almaty", "")
+            viewModel.fetchDoctorList(selectedCity ?: "Almaty", "", userId)
             return
         }
-        viewModel.fetchDoctorList(selectedCity ?: "Almaty", selectedCategory)
+        viewModel.fetchDoctorList(selectedCity ?: "Almaty", selectedCategory, userId)
     }
     override fun onDestroyView() {
         super.onDestroyView()

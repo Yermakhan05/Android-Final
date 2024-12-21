@@ -16,8 +16,8 @@ import retrofit2.Callback
 import retrofit2.Response
 
 class HospitalAdapter(
-    private val onSessionClickListener: (Hospital) -> Unit,
-    private val onChangeFavouriteState: (Hospital, Boolean) -> Unit,
+    private val onSessionClickListener: ((Hospital) -> Unit)? = null,
+    private val userId: Int?
 ): ListAdapter<Hospital, HospitalAdapter.ViewHolder>(HospitalItemCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -44,19 +44,24 @@ class HospitalAdapter(
                 tvBedCount.text = "Beds: ${item.hospitalBedCount}"
 
                 tvRating.text = item.rating.toString()
-                val favoriteRequest = FavoriteRequestToHospital(
-                    clientId = 2,
-                    hospitalId = item.hospitalId
-                )
+                val favoriteRequest = userId?.let {
+                    FavoriteRequestToHospital(
+                        clientId = it,
+                        hospitalId = item.hospitalId
+                    )
+                }
                 favoriteHospital.setOnClickListener {
-//                    onChangeFavouriteState(item, !item.isFavorite)
                     if (item.isFavorite) {
-                        removeFavoriteList(favoriteRequest)
+                        if (favoriteRequest != null) {
+                            removeFavoriteList(favoriteRequest)
+                        }
                         favoriteHospital.setImageResource(R.drawable.baseline_favorite_border_24)
                         item.isFavorite = false
                     }
                     else {
-                        addFavoriteList(favoriteRequest)
+                        if (favoriteRequest != null) {
+                            addFavoriteList(favoriteRequest)
+                        }
                         favoriteHospital.setImageResource(R.drawable.baseline_favorite_24)
                         item.isFavorite = true
                     }
@@ -66,7 +71,7 @@ class HospitalAdapter(
                 }
 
                 hospitalCard.setOnClickListener{
-                    onSessionClickListener(item)
+                    onSessionClickListener?.let { it1 -> it1(item) }
                 }
 
                 Glide.with(root.context)

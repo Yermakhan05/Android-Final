@@ -25,7 +25,7 @@ class DrListViewModel(
     private val _error = MutableLiveData<String>()
     val error: LiveData<String> get() = _error
 
-    fun fetchDoctorList(city: String, category: String) {
+    fun fetchDoctorList(city: String, category: String, userId: Int?) {
         _drListUI.value = DrListUI.Loading(true)
 
         val params = mutableMapOf<String, String>()
@@ -45,7 +45,11 @@ class DrListViewModel(
                 } else {
                     calculateAveragePrice(drList.results)
                     drList.results.forEach {
-                        it.isFavorite = it.favorites.contains(2)
+                        if (userId == null) {
+                            it.isFavorite = false
+                        }else {
+                            it.isFavorite = it.favorites.contains(userId)
+                        }
                     }
                     _drListUI.value = DrListUI.Success(drList.results)
                 }

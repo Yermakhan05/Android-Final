@@ -8,25 +8,29 @@ import android.widget.Toast
 import androidx.appcompat.widget.SearchView
 import androidx.appcompat.widget.Toolbar
 import androidx.fragment.app.Fragment
-import androidx.recyclerview.widget.RecyclerView
-import com.example.auyrma.view.adapter.PharmacyAdapter
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.auyrma.R
 import com.example.auyrma.databinding.FragmentHospitalListBinding
-import com.example.auyrma.model.datasource.ApiSource
-import com.example.auyrma.model.entity.Hospital
-import com.example.auyrma.model.entity.Pharmacy
+import com.example.auyrma.model.repository.UserRepository
 import com.example.auyrma.view.adapter.HospitalAdapter
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import com.example.auyrma.view.adapter.PharmacyAdapter
+import com.example.auyrma.viewmodel.AuthViewModel
+import com.example.auyrma.viewmodel.HospitalListViewModel
+import com.example.auyrma.viewmodel.ViewModelFactory
 
-
-class HospitalListFragment() : Fragment() {
+class HospitalListFragment : Fragment() {
 
     private var _binding: FragmentHospitalListBinding? = null
-    private val binding: FragmentHospitalListBinding get() = _binding!!
-    private var selectedCity: String? = null
-    private var adapter: RecyclerView.Adapter<*>? = null
+    private val binding get() = _binding!!
+    private val viewModel: HospitalListViewModel by viewModels()
+
+    private lateinit var hospitalAdapter: HospitalAdapter
+    private lateinit var pharmacyAdapter: PharmacyAdapter
+
+    private lateinit var userRepository: UserRepository
+    private lateinit var authViewModel: AuthViewModel
 
     companion object {
         private const val ARG_CITY = "arg_city"
@@ -39,169 +43,134 @@ class HospitalListFragment() : Fragment() {
             return fragment
         }
     }
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        arguments?.let {
-            selectedCity = it.getString(ARG_CITY, "Almaty")
-        }
-    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
+    ): View {
         _binding = FragmentHospitalListBinding.inflate(inflater, container, false)
         return binding.root
     }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        binding.toggleGroup.check(R.id.toggle_hospital)
+        val selectedCity = arguments?.getString(ARG_CITY, "Almaty") ?: "Almaty"
+        viewModel.setCity(selectedCity)
+        viewModel.fetchHospitals(mapOf())
+        val repository = UserRepository(requireContext())
+        val factory = ViewModelFactory(repository)
+        authViewModel = ViewModelProvider(this, factory).get(AuthViewModel::class.java)
+        userRepository = UserRepository(requireContext())
+        var userId: Int? = null
+        if (isUserAuthenticated()) {
+            userId = userRepository.getAuthenticatedUserId()
+        } else {
+            userId = null
+        }
 
+        setupAdapters(userId)
+        observeViewModel()
+        setupUI()
+        setupSearch()
+        selectedCityUpdate()
+    }
+
+    private fun selectedCityUpdate(){
         parentFragmentManager.setFragmentResultListener("requestKey", this) { _, bundle ->
-            selectedCity = bundle.getString("selectedCity", "Almaty")
+            val newCity = bundle.getString("selectedCity", "Almaty")
+            viewModel.setCity(newCity)
+            observeViewModel()
             updateRecyclerView(binding.toggleGroup.checkedButtonId)
         }
+    }
 
-        binding.toggleGroup.check(R.id.toggle_hospital)
+    private fun updateRecyclerView(checkedId: Int) {
+        when (checkedId) {
+            binding.toggleHospital.id -> {
+                viewModel.fetchHospitals(mapOf())
+            }
 
+            binding.togglePharmacy.id -> {
+                viewModel.fetchPharmacies(mapOf())
+            }
+        }
+    }
+
+    private fun setupAdapters(userId: Int?) {
+        hospitalAdapter = HospitalAdapter(
+            onSessionClickListener = {
+                val toolbar = requireActivity().findViewById<Toolbar>(R.id.toolbar)
+                toolbar.visibility = View.GONE
+
+                requireActivity().supportFragmentManager
+                    .beginTransaction()
+                    .replace(R.id.fragment_container_view, HospitalDetailFragment.newInstance(it))
+                    .addToBackStack(null)
+                    .commit()
+            },
+            userId
+        )
+
+        pharmacyAdapter = PharmacyAdapter()
+        binding.recyclerView.adapter = hospitalAdapter
+        binding.recyclerView.layoutManager = LinearLayoutManager(context)
+    }
+
+    private fun observeViewModel() {
+        viewModel.hospitalList.observe(viewLifecycleOwner) { hospitals ->
+            hospitalAdapter.submitList(hospitals)
+            binding.recyclerView.adapter = hospitalAdapter
+        }
+
+        viewModel.pharmacyList.observe(viewLifecycleOwner) { pharmacies ->
+            pharmacyAdapter.submitList(pharmacies)
+            binding.recyclerView.adapter = pharmacyAdapter
+        }
+
+        viewModel.errorMessage.observe(viewLifecycleOwner) { error ->
+            Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun setupUI() {
         binding.toggleGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (isChecked) {
-                updateRecyclerView(checkedId)
-            }
-        }
-
-        updateRecyclerView(binding.toggleGroup.checkedButtonId)
-        search()
-    }
-
-    private fun fetchHospitalList(params: Map<String, String>) {
-        val mergedParams = mapOf(
-            "city" to selectedCity
-        ) + params
-        ApiSource.client.fetchHospitals(mergedParams).enqueue(object : Callback<List<Hospital>> {
-            override fun onResponse(call: Call<List<Hospital>>, response: Response<List<Hospital>>) {
-                if (response.isSuccessful) {
-                    val hospitalList = response.body()
-                    if (hospitalList != null) {
-                        adapter = HospitalAdapter(
-                            onSessionClickListener = {
-                                val toolbar = requireActivity().findViewById<Toolbar>(R.id.toolbar)
-                                toolbar.visibility = View.GONE
-
-                                requireActivity().supportFragmentManager
-                                    .beginTransaction()
-                                    .replace(R.id.fragment_container_view, HospitalDetailFragment.newInstance(it))
-                                    .addToBackStack(null)
-                                    .commit()
-                            },
-                            onChangeFavouriteState = { hospital, isFavourite ->
-                                changeFavouriteState(hospital.hospitalId, isFavourite)
-                            }
-                        )
-                        hospitalList.forEach {
-                            it.isFavorite = it.favorites.contains(2)
-                        }
-                        binding.recyclerView.adapter = adapter
-                        (adapter as HospitalAdapter).submitList(hospitalList)
-                    }
-                    else {
-                        adapter = null
-                    }
+                when (checkedId) {
+                    R.id.toggle_hospital -> viewModel.fetchHospitals(mapOf())
+                    R.id.toggle_pharmacy -> viewModel.fetchPharmacies(mapOf())
                 }
             }
-
-            override fun onFailure(call: Call<List<Hospital>>, t: Throwable) {
-                println("Error: ${t.message}")
-            }
-        })
-    }
-
-    private fun fetchPharmacyList(params: Map<String, String>) {
-        val mergedParams = mapOf(
-            "city" to selectedCity
-        ) + params
-        ApiSource.client.fetchPharmacies(mergedParams).enqueue(object : Callback<List<Pharmacy>> {
-            override fun onResponse(call: Call<List<Pharmacy>>, response: Response<List<Pharmacy>>) {
-                if (response.isSuccessful) {
-                    val pharmacyList = response.body()
-                    adapter = PharmacyAdapter()
-                    binding.recyclerView.adapter = adapter
-                    if (pharmacyList != null) {
-                        (adapter as PharmacyAdapter).submitList(pharmacyList)
-                    }
-                    else {
-                        (adapter as? PharmacyAdapter)?.submitList(emptyList())
-                    }
-                }
-            }
-
-            override fun onFailure(call: Call<List<Pharmacy>>, t: Throwable) {
-                println("Error: ${t.message}")
-            }
-        })
-    }
-    private fun changeFavouriteState(drId: Int, isFavourite: Boolean) {
-        fetchHospitalList(mapOf())
-        val message = if (isFavourite) {
-            "Hospital with ID $drId added to favorites"
-        } else {
-            "Hospital with ID $drId removed from favorites"
         }
-        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+    }
+    private fun isUserAuthenticated(): Boolean {
+        return userRepository.isUserAuthenticated()
     }
 
-    private fun search() {
+    private fun setupSearch() {
         val searchView = requireActivity().findViewById<SearchView>(R.id.search_view)
-
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
-                query?.let {
-                    filterList(it)
-                }
+                query?.let { filterList(it) }
                 return true
             }
 
             override fun onQueryTextChange(newText: String?): Boolean {
-                newText?.let {
-                    filterList(it)
-                }
+                newText?.let { filterList(it) }
                 return true
             }
         })
     }
 
     private fun filterList(query: String) {
-        when (adapter) {
-            is HospitalAdapter -> {
-                val params = mapOf(
-                    "search" to query
-                )
-                fetchHospitalList(params)
-            }
-
-            is PharmacyAdapter -> {
-                val params = mapOf(
-                    "search" to query
-                )
-                fetchPharmacyList(params)
-            }
-
-            else -> {
-                (adapter as? HospitalAdapter)?.submitList(emptyList())
-                (adapter as? PharmacyAdapter)?.submitList(emptyList())
-            }
+        val params = mapOf("search" to query)
+        when (binding.toggleGroup.checkedButtonId) {
+            R.id.toggle_hospital -> viewModel.fetchHospitals(params)
+            R.id.toggle_pharmacy -> viewModel.fetchPharmacies(params)
         }
     }
-
-
-    private fun updateRecyclerView(checkedId: Int) {
-        when (checkedId) {
-            binding.toggleHospital.id -> {
-                fetchHospitalList(mapOf())
-            }
-
-            binding.togglePharmacy.id -> {
-                fetchPharmacyList(mapOf())
-            }
-        }
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
     }
 }

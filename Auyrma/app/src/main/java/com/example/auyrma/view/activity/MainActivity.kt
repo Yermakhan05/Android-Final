@@ -17,6 +17,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
+import com.example.auyrma.view.fragment.profile.ProfileFragment
 
 class MainActivity : AppCompatActivity() {
 
@@ -79,15 +80,13 @@ class MainActivity : AppCompatActivity() {
                 R.id.hospital -> {
                     navigateToHospitalFragment()
                 }
+                R.id.profile -> {
+                    supportFragmentManager
+                        .beginTransaction()
+                        .replace(R.id.fragment_container_view, ProfileFragment())
+                        .commit()
 
-
-//                R.id.profile -> {
-//                    supportFragmentManager
-//                        .beginTransaction()
-//                        .replace(R.id.fragment_container_view, profileFragment)
-//                        .commit()
-//
-//                }
+                }
             }
 
             true

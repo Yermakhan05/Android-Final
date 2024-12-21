@@ -10,6 +10,8 @@ import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.widget.Toolbar
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import com.example.auyrma.MyApp.Companion.database
 import com.example.auyrma.view.adapter.HospitalAdapter
@@ -21,7 +23,10 @@ import com.example.auyrma.model.entity.Dr
 import com.example.auyrma.model.entity.Hospital
 import com.example.auyrma.model.entity.Session
 import com.example.auyrma.model.entity.SessionRoom
+import com.example.auyrma.model.repository.UserRepository
 import com.example.auyrma.view.adapter.FavoriteAdapter
+import com.example.auyrma.viewmodel.AuthViewModel
+import com.example.auyrma.viewmodel.ViewModelFactory
 import com.google.android.material.tabs.TabLayout
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,6 +42,8 @@ class FavoriteListFragment : Fragment() {
     private val binding: FragmentFavoriteListBinding get() = _binding!!
     private var adapter: RecyclerView.Adapter<*>? = null
 
+    private lateinit var userRepository: UserRepository
+    private lateinit var authViewModel: AuthViewModel
 
     companion object {
         fun newInstance() = FavoriteListFragment()
@@ -51,12 +58,28 @@ class FavoriteListFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        setupTabs()
-        fetchSessionList(mapOf("user" to "2"))
+
+        val repository = UserRepository(requireContext())
+        val factory = ViewModelFactory(repository)
+        authViewModel = ViewModelProvider(this, factory).get(AuthViewModel::class.java)
+
+        // Инициализация репозитория
+        userRepository = UserRepository(requireContext())
+        if (isUserAuthenticated()){
+            binding.isAuth.visibility = View.GONE
+            val userId = userRepository.getAuthenticatedUserId()
+            fetchSessionList(mapOf("user" to userId.toString()))
+            setupTabs(userId)
+        }
+        else {
+            binding.isAuth.visibility = View.VISIBLE
+        }
     }
 
-
-    private fun setupTabs() {
+    private fun isUserAuthenticated(): Boolean {
+        return userRepository.isUserAuthenticated()
+    }
+    private fun setupTabs(userId: Int) {
         val tabLayout = binding.tabLayout
 
         tabLayout.addTab(tabLayout.newTab().setText("Sessions"))
@@ -66,9 +89,9 @@ class FavoriteListFragment : Fragment() {
         tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) {
                 when (tab.position) {
-                    0 -> fetchSessionList(mapOf("user" to "2"))
-                    1 -> fetchHospitalFavouriteList()
-                    2 -> fetchDoctorFavouriteList()
+                    0 -> fetchSessionList(mapOf("user" to userId.toString()))
+                    1 -> fetchHospitalFavouriteList(userId)
+                    2 -> fetchDoctorFavouriteList(userId)
                 }
             }
 
@@ -77,7 +100,7 @@ class FavoriteListFragment : Fragment() {
         })
 
     }
-    private fun fetchHospitalFavouriteList() {
+    private fun fetchHospitalFavouriteList(userId: Int) {
         ApiSource.client.fetchFavoriteHospitals().enqueue(object : Callback<List<Hospital>> {
             override fun onResponse(call: Call<List<Hospital>>, response: Response<List<Hospital>>) {
                 if (response.isSuccessful) {
@@ -94,12 +117,10 @@ class FavoriteListFragment : Fragment() {
                                     .addToBackStack(null)
                                     .commit()
                             },
-                            onChangeFavouriteState = { hospital, isFavourite ->
-                                changeFavouriteState(hospital.hospitalId, isFavourite)
-                            }
+                            userId
                         )
                         hospitalList.forEach {
-                            it.isFavorite = it.favorites.contains(2)
+                            it.isFavorite = it.favorites.contains(userId)
                         }
                         binding.recyclerViewSessions.adapter = adapter
                         (adapter as HospitalAdapter).submitList(hospitalList)
@@ -116,7 +137,7 @@ class FavoriteListFragment : Fragment() {
             }
         })
     }
-    private fun fetchDoctorFavouriteList() {
+    private fun fetchDoctorFavouriteList(userId: Int) {
         ApiSource.client.fetchFavoriteDoctor().enqueue(object : Callback<List<Dr>> {
             override fun onResponse(call: Call<List<Dr>>, response: Response<List<Dr>>) {
                 if (response.isSuccessful) {
@@ -138,7 +159,7 @@ class FavoriteListFragment : Fragment() {
                             },
                         )
                         drList.forEach {
-                            it.isFavorite = it.favorites.contains(2)
+                            it.isFavorite = it.favorites.contains(userId)
                         }
                         binding.recyclerViewSessions.adapter = adapter
                         (adapter as FavoriteAdapter).submitList(drList)
@@ -217,14 +238,5 @@ class FavoriteListFragment : Fragment() {
                 println("Error: ${t.message}")
             }
         })
-    }
-    private fun changeFavouriteState(hospitalId: Int, isFavourite: Boolean) {
-        fetchHospitalFavouriteList()
-        val message = if (isFavourite) {
-            "Hospital with ID $hospitalId added to favorites"
-        } else {
-            "Hospital with ID $hospitalId removed from favorites"
-        }
-        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
     }
 }

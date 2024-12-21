@@ -6,8 +6,8 @@
         android:icon="@drawable/baseline_home_24"/>
     <item
         android:id="@+id/session_page"
-        android:title="Session"
-        android:icon="@drawable/baseline_notifications_24"/>
+        android:title="Activities"
+        android:icon="@drawable/baseline_favorite_24"/>
     <item
         android:id="@+id/hospital"
         android:title="Hospital"

@@ -20,6 +20,7 @@ class DrAdapter(
     private val onSessionClickListener: (Dr) -> Unit,
     private val onChangeFavouriteStateDoctor: (Dr, Boolean) -> Unit,
     private val context: Context,
+    private val userId: Int?
     )
     : ListAdapter<Dr, DrAdapter.ViewHolder>(ItemCallback()) {
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -42,18 +43,24 @@ class DrAdapter(
                 )
                 binding.backgroundImage.setImageResource(resourceId)
                 binding.doctorSpeciality.text = dr.speciality
-                val favoriteRequest = FavoriteRequest(
-                    clientId = 2,
-                    medicId = dr.id
-                )
+                val favoriteRequest = userId?.let {
+                    FavoriteRequest(
+                        clientId = it,
+                        medicId = dr.id
+                    )
+                }
                 favoriteIcon.setOnClickListener {
                     if (dr.isFavorite) {
-                        removeFavoriteList(favoriteRequest)
+                        if (favoriteRequest != null) {
+                            removeFavoriteList(favoriteRequest)
+                        }
                         favoriteIcon.setImageResource(R.drawable.baseline_favorite_border_24)
                         dr.isFavorite = false
                     }
                     else {
-                        addFavoriteList(favoriteRequest)
+                        if (favoriteRequest != null) {
+                            addFavoriteList(favoriteRequest)
+                        }
                         favoriteIcon.setImageResource(R.drawable.baseline_favorite_24)
                         dr.isFavorite = true
                     }

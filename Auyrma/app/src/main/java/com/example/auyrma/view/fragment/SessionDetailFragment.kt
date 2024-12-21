@@ -70,6 +70,8 @@ class SessionDetailFragment: Fragment() {
         super.onViewCreated(view, savedInstanceState)
         val dr = arguments?.getSerializable(KEY_DR) as? Dr
 
+
+
         binding.drName.text = dr?.name
         binding.drPrice.text = dr?.price.toString() + "₸ 1 item\ninc. of all taxes"
         binding.drSp.text = dr?.speciality

@@ -11,7 +11,7 @@ class DrListViewModelFactory(
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(DrListViewModel::class.java)) {
-            return DrListViewModel(client = ApiSource.client,) as T
+            return DrListViewModel(client = repository.client) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
